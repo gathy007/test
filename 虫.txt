@@ -1,5 +1,7 @@
 全て一度作成する場合python -m PyInstaller --onefile game_controller.py
 .specから生成する場合python -m PyInstaller game_controller.spec
+git clone https://github.com/gathy007
+
 
 虫
 バジリスク
@@ -8,6 +10,8 @@
 死神
 コカトリス
 フランケンシュタイン
+クリスタルモンスター数種
+・
 
 
 メイジ
