@@ -526,12 +526,15 @@ class TransparentWindow(QWidget):
                     )
 
                     stop_bgm()
-                    if self.hp_window.isVisible():
+                    if self.hp_window and self.hp_window.isVisible():
                         self.hp_window.close()
-                    if self.settings_window.isVisible():
+                    if self.settings_window and self.settings_window.isVisible():
                         self.settings_window.close()
+                    if hasattr(self, "inn_window") and self.inn_window and self.inn_window.isVisible():
+                        self.inn_window.close()
+                    if hasattr(self, "shop_window") and self.shop_window and self.shop_window.isVisible():
+                        self.shop_window.close()
                     self.close()
-
                     if self.return_to_menu_callback:
                         self.return_to_menu_callback()
                     return 
