@@ -1,19 +1,21 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QScrollArea, QSizePolicy
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QScrollArea, QSizePolicy
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from items import ITEMS
 from sound import play_se
 
-class ShopWindow(QWidget):
+class ShopWindow(QMainWindow):
     def __init__(self, character, inventory_window, main_window=None):
-        super().__init__(None)
+        super().__init__(main_window)
         self.main_window = main_window
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.Window)
         self.character = character
         self.inventory_window = inventory_window
         self.setWindowTitle("ショップ")
         self.setFixedSize(320, 400)
-        main_layout = QVBoxLayout()
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
 
         main_layout.addWidget(QLabel("いらっしゃい！ポーションはいかが？"))
         # スクロール領域を作成
@@ -57,7 +59,6 @@ class ShopWindow(QWidget):
         scroll_widget.setLayout(scroll_layout)
         scroll_area.setWidget(scroll_widget)
         main_layout.addWidget(scroll_area)
-        self.setLayout(main_layout)
 
     def buy_item(self, item_key):
         item = ITEMS[item_key]

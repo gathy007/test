@@ -1,8 +1,8 @@
 import sys
 import random
-from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox 
+from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox, QLabel
 from PyQt5.QtGui import QPainter, QTransform,QPixmap
-from PyQt5.QtCore import Qt, QTimer, QRect
+from PyQt5.QtCore import Qt, QTimer, QRect, QPoint
 
 #他のpyからクラスをインポートする関数
 from character import Character  # キャラクター定義読み込み
@@ -17,6 +17,7 @@ from dungeons import DUNGEONS
 from shop_window import ShopWindow  
 from inventory_window import InventoryWindow 
 from items import ITEMS
+from monster_dex_window import MonsterDexWindow  
 
 class TransparentWindow(QWidget):
     def __init__(self, selected_character="swordman", use_save_data=True, return_to_menu_callback=None):
@@ -36,6 +37,7 @@ class TransparentWindow(QWidget):
         self.defeated_monsters = set()
         self.unlocked_dungeons = set()
         self.monster_kill_count = {}
+        self.selected_skill_key = "fireball"
         self.character = Character(selected_character)
         if use_save_data:
             save_data = load_game()
@@ -146,6 +148,7 @@ class TransparentWindow(QWidget):
         self.attack_animation_playing = False
 
         self.facing_right = False
+        self.facing_down = False
 
         self.show() 
         #ウィンドウを強制的にアクティブにしてキーボードを受け付けるようにする
@@ -188,7 +191,7 @@ class TransparentWindow(QWidget):
                             available_monsters.append(name)
                     else:
                         available_monsters.append(name)
-        # ホーム画面：area_level 1 または 倒したことのあるモンスター（ボスも含む）        
+        #ホーム画面：area_level 1 または 倒したことのあるモンスター（ボスも含む）        
         else:
             available_monsters = [
                 name for name, data in Monster.monster_data.items()
@@ -224,11 +227,11 @@ class TransparentWindow(QWidget):
             y = random.randint(0, self.height() - 64)
 
             candidate_rect = QRect(x, y, 64, 64)
-            # 禁止範囲と重ならなければ決定
+            #禁止範囲と重ならなければ決定
             if not any(candidate_rect.intersects(area) for area in forbidden_areas):
                 break
         else:
-            # max_attempts超えたらそのまま出す
+            #max_attempts超えたらそのまま出す
             x = random.randint(0, self.width() - 64)
             y = random.randint(0, self.height() - 64)        
 
@@ -328,6 +331,32 @@ class TransparentWindow(QWidget):
         self.attack_frame_index = 0
         self.attack_animation_playing = True
         self.attack_timer.start(self.character.attack_speed)
+    #スキルアニメーションの表示処理
+    def show_skill_animation(self, skill_info, position, skill_type="throw", facing_right=True, facing_down = True):
+        anim_info = skill_info.get("animation")
+        if not anim_info:
+            return 
+
+        folder = anim_info["folder"]
+        frame_count = anim_info["frame_count"]
+        interval = anim_info["interval"]
+        damage = skill_info.get("damage", 0)
+
+        frames = [
+            QPixmap(f"{folder}{i}.png").scaled(32, 632, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            for i in range(frame_count)
+        ]
+
+        SkillAnimation(
+            parent=self,
+            frames=frames,
+            pos=position,
+            interval=interval,
+            damage=damage,
+            skill_type=skill_type,
+            facing_right=self.facing_right,
+            facing_down = self.facing_down,
+        )
 
     def apply_knockback(self, m):
         dx = m["x"] - self.x
@@ -371,6 +400,98 @@ class TransparentWindow(QWidget):
             self.attack_timer.stop()
             self.current_pixmap = self.get_oriented_pixmap(self.character.static_pixmap)
         self.update()
+    #モンスター撃破の処理（撃破記録やアイテムドロップへの移行）
+    def handle_monster_death(self, m):
+        m["alive"] = False
+
+        #撃破記録
+        if m["name"] not in self.defeated_monsters:
+            self.defeated_monsters.add(m["name"])
+        if hasattr(self, "monster_dex_window") and self.monster_dex_window and self.monster_dex_window.isVisible():
+            self.monster_dex_window.update_dex(self.defeated_monsters)
+
+        #ダンジョン内撃破カウント
+        if hasattr(self, "selected_dungeon"):
+            dungeon_name = self.selected_dungeon
+            self.monster_kill_count[dungeon_name] = self.monster_kill_count.get(dungeon_name, 0) + 1
+            if self.monster_kill_count[dungeon_name] == 10:
+                display_name = DUNGEONS.get(dungeon_name, {}).get("display_name", dungeon_name)
+                self.hp_window.show_message(f"{display_name} のモンスターを10体倒した！ボスが出現するようになった！")
+
+        #ボス処理（ダンジョンキー取得）
+        if m.get("type") == "boss":
+            if m["name"] not in self.defeated_bosses:
+                self.defeated_bosses.append(m["name"])
+                dungeon_key = getattr(self, "selected_dungeon", None)
+                if dungeon_key:
+                    next_key = DUNGEONS.get(dungeon_key, {}).get("next_dungeon_key")
+                    if next_key:
+                        self.unlocked_dungeons.add(next_key)
+                        self.hp_window.show_message(f"{DUNGEONS[next_key]['display_name']} の鍵を手に入れた！")
+
+        self.hp_window.update_hp(self.character.hp, self.character.max_hp)
+        self.hp_window.update_exp(self.character.level, self.character.exp, self.character.exp_to_next)
+        self.hp_window.update_status(self.character)
+
+        play_se("death_m")
+
+        #ドロップ処理へ移行
+        self.drop_items_from_monster(m)
+    #アイテムのドロップ処理
+    def drop_items_from_monster(self, m):
+        coin_total = m.get("coin", 1)
+        exp_total = m.get("exp", 0)
+
+        coin_keys = []
+        while coin_total > 0:
+            if coin_total >= 10 and "coin_10" in self.drop_item_types:
+                coin_keys.append("coin_10")
+                coin_total -= 10
+            elif coin_total >= 5 and "coin_5" in self.drop_item_types:
+                coin_keys.append("coin_5")
+                coin_total -= 5
+            elif "coin_1" in self.drop_item_types:
+                coin_keys.append("coin_1")
+                coin_total -= 1
+            else:
+                break
+
+        for coin_key in coin_keys:
+            coin_data = self.drop_item_types[coin_key]
+            self.dropped_coins.append({
+                "x": m["x"] + random.randint(-10, 10),
+                "y": m["y"] + random.randint(-10, 10),
+                "type": coin_data["type"],
+                "amount": coin_data["amount"],
+                "frames": coin_data["frames"],
+                "frame_index": 0,
+            })
+    
+        exp_keys = []
+        while exp_total > 0:
+            if exp_total >= 10 and "exp_10" in self.drop_item_types:
+                exp_keys.append("exp_10")
+                exp_total -= 10
+            elif exp_total >= 5 and "exp_5" in self.drop_item_types:
+                exp_keys.append("exp_5")
+                exp_total -= 5
+            elif "exp_1" in self.drop_item_types:
+                exp_keys.append("exp_1")
+                exp_total -= 1
+            else:
+                break
+    
+        for exp_key in exp_keys:
+            exp_data = self.drop_item_types[exp_key]
+            self.dropped_coins.append({
+                "x": m["x"] + random.randint(-10, 10),
+                "y": m["y"] + random.randint(-10, 10),
+                "type": exp_data["type"],
+                "amount": exp_data["amount"],
+                "frames": exp_data["frames"],
+                "frame_index": 0,
+            })
+
 
     def update_frame(self):
         if not self.character.character_alive:
@@ -394,9 +515,11 @@ class TransparentWindow(QWidget):
             if Qt.Key_Up in self.keys_pressed or Qt.Key_W in self.keys_pressed:
                 play_se("walk")
                 dy -= self.move_speed
+                self.facing_down = False
             if Qt.Key_Down in self.keys_pressed or Qt.Key_S in self.keys_pressed:
                 play_se("walk")
                 dy += self.move_speed
+                self.facing_down = True
             new_x = min(max(self.x + dx, 0), self.width() - self.current_pixmap.width())
             new_y = min(max(self.y + dy, 0), self.height() - self.current_pixmap.height())
             
@@ -422,97 +545,7 @@ class TransparentWindow(QWidget):
                      self.start_attack_animation()
                      self.apply_knockback(m)  # ノックバック処理追加
                 if m["hp"] <= 0 and m["alive"]:
-                    m["alive"] = False
-                    #倒したモンスターを記録
-                    if m["name"] not in self.defeated_monsters:
-                        self.defeated_monsters.add(m["name"])
-                    if hasattr(self, "selected_dungeon"):
-                        dungeon_name = self.selected_dungeon
-                        self.monster_kill_count[dungeon_name] = self.monster_kill_count.get(dungeon_name, 0) + 1
-                        if self.monster_kill_count[dungeon_name] == 10:
-                            display_name = DUNGEONS.get(dungeon_name, {}).get("display_name", dungeon_name)
-                            self.hp_window.show_message(f"{display_name} のモンスターを10体倒した！ボスが出現するようになった！")
-                    play_se("death_m")
-
-                    if m.get("type") == "boss":
-                        #倒したボスをリストに保存する
-                        if m["name"] not in self.defeated_bosses:
-                            self.defeated_bosses.append(m["name"])
-                            #現在のダンジョンを解放
-                            dungeon_key = getattr(self, "selected_dungeon", None)
-                            if dungeon_key:
-                                #次のダンジョンキーを取得してアンロック
-                                next_key = DUNGEONS.get(dungeon_key, {}).get("next_dungeon_key")
-                                if next_key:
-                                    self.unlocked_dungeons.add(next_key)
-                                    self.hp_window.show_message(f"{DUNGEONS[next_key]['display_name']} の鍵を手に入れた！")
-
-                        #self.character.boss_level += 1
-                        #self.hp_window.show_message(f"ボス {m['display_name']} を倒した！")
-                        #self.hp_window.show_message(f"次のエリアが解放されました！ boss_level = {self.character.boss_level}")
-
-                    self.hp_window.update_hp(self.character.hp, self.character.max_hp)
-                    self.hp_window.update_exp(self.character.level, self.character.exp, self.character.exp_to_next)
-                    self.hp_window.update_status(self.character)
-
-                    #モンスターのコイン量を取得
-                    coin_total = m.get("coin", 1)
-                    #ドロップするコイン種類に分割
-                    coin_keys = []
-                    while coin_total > 0:
-                        if coin_total >= 10 and "coin_10" in self.drop_item_types:
-                            coin_keys.append("coin_10")
-                            coin_total -= 10
-                        elif coin_total >= 5 and "coin_5" in self.drop_item_types:
-                            coin_keys.append("coin_5")
-                            coin_total -= 5
-                        elif "coin_1" in self.drop_item_types:
-                            coin_keys.append("coin_1")
-                            coin_total -= 1
-                        else:
-                            break  #使えるコイン種がなければ終了（安全対策）
-                    # コインを順にドロップ
-                    for coin_key in coin_keys:
-                        coin_data = self.drop_item_types[coin_key]
-                        drop = {
-                            "x": m["x"] + random.randint(-10, 10),  #少しバラけて落ちる演出
-                            "y": m["y"] + random.randint(-10, 10),
-                            "type": coin_data["type"],
-                            "amount": coin_data["amount"],
-                            "frames": coin_data["frames"],
-                            "frame_index": 0,
-                        }
-                        self.dropped_coins.append(drop)
-                        
-                    #モンスターの経験値量を取得
-                    exp_total = m.get("exp", 0)
-                    #ドロップする経験値種類に分割
-                    exp_keys = []
-                    while exp_total > 0:
-                        if exp_total >= 10 and "exp_10" in self.drop_item_types:
-                            exp_keys.append("exp_10")
-                            exp_total -= 10
-                        elif exp_total >= 5 and "exp_5" in self.drop_item_types:
-                            exp_keys.append("exp_5")
-                            exp_total -= 5
-                        elif "exp_1" in self.drop_item_types:
-                            exp_keys.append("exp_1")
-                            exp_total -= 1
-                        else:
-                            break  #使えるexpアイテムがなければ終了（安全対策）
-                    #経験値アイテムをドロップ
-                    for exp_key in exp_keys:
-                        exp_data = self.drop_item_types[exp_key]
-                        drop = {
-                            "x": m["x"] + random.randint(-10, 10),
-                            "y": m["y"] + random.randint(-10, 10),
-                            "type": exp_data["type"],
-                            "amount": exp_data["amount"],
-                            "frames": exp_data["frames"],
-                            "frame_index": 0,
-                        }
-                        self.dropped_coins.append(drop)
-
+                    self.handle_monster_death(m)
                 if self.character.hp <= 0:
                     play_se("death_c")
                     self.character.character_alive = False
@@ -534,6 +567,8 @@ class TransparentWindow(QWidget):
                         self.inn_window.close()
                     if hasattr(self, "shop_window") and self.shop_window and self.shop_window.isVisible():
                         self.shop_window.close()
+                    if hasattr(self, "monster_dex_window") and self.monster_dex_window and self.monster_dex_window.isVisible():
+                        self.monster_dex_window.close()
                     self.close()
                     if self.return_to_menu_callback:
                         self.return_to_menu_callback()
@@ -594,6 +629,8 @@ class TransparentWindow(QWidget):
                     self.inn_window.close()
                 if hasattr(self, "shop_window") and self.shop_window.isVisible():
                     self.shop_window.close()
+                if hasattr(self, "monster_dex_window") and self.monster_dex_window and self.monster_dex_window.isVisible():
+                    self.monster_dex_window.close()
                 self.close()
                 if self.return_to_menu_callback:
                     self.return_to_menu_callback() 
@@ -602,6 +639,29 @@ class TransparentWindow(QWidget):
         #ctrl+Cでリセット
         #elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
             #self.reset_positions()  
+        #1と2でスキル選択（後でスキルボタン作成）
+        elif event.key() == Qt.Key_1:
+            self.selected_skill_key = "fireball"
+            self.show_message("スキルをファイアボールに切り替えました")
+        elif event.key() == Qt.Key_2:
+            self.selected_skill_key = "ice"
+            self.show_message("スキルをアイスブラストに切り替えました")
+        #Fでスキル発動
+        elif event.key() == Qt.Key_F:
+            skill_key = self.selected_skill_key
+            if self.character.use_skill(skill_key, show_message=self.hp_window.show_message):
+                skill_info = self.character.skills[skill_key]
+                skill_type = skill_info.get("type", "throw")
+                #スキルの位置を決定（キャラの左上が基準、＋が右と下）
+                if skill_type == "throw":
+                    offset_x = 64 if self.facing_right else -500 #右向いてたら64PXの位置にスキル出現(画像の左上を基準)
+                    skill_pos = QPoint(self.x + offset_x, self.y)
+                elif skill_type == "put":
+                    offset_y = 64 if self.facing_down else -500 #下を向いてたら64pxの位置
+                    skill_pos = QPoint(self.x, self.y + offset_y)
+                else:
+                    skill_pos = QPoint(self.x, self.y) 
+                self.show_skill_animation(skill_info, position=skill_pos, skill_type=skill_type, facing_right=self.facing_right, facing_down = self.facing_down)
 
         #Sでステータス画面表示
         elif event.key() == Qt.Key_C:
@@ -640,6 +700,18 @@ class TransparentWindow(QWidget):
 
         elif not self.character.character_alive:
             return
+
+        #Mでモンスター図鑑
+        elif event.key() == Qt.Key_M:
+            if hasattr(self, "monster_dex_window") and self.monster_dex_window.isVisible():
+                play_se("window_close")
+                self.monster_dex_window.hide()
+            else:
+                play_se("window_open")
+                self.monster_dex_window = MonsterDexWindow(self.defeated_monsters, Monster.monster_data, self.monster_folder, main_window=self)
+                self.monster_dex_window.show()
+                self.activateWindow()
+                self.setFocus()
 
         #spaceでINNに入る
         elif event.key() == Qt.Key_Space:
@@ -703,3 +775,64 @@ class TransparentWindow(QWidget):
     def show_message(self, text):
         if self.hp_window:
             self.hp_window.show_message(text)
+#スキルアニメーションの攻撃処理
+class SkillAnimation(QLabel):
+    def __init__(self, parent, frames, pos, interval, damage, skill_type="throw", facing_right=True, facing_down = True):
+        super().__init__(parent)
+        self.parent = parent
+        self.frames = frames
+        self.index = 0
+        self.interval = interval
+        self.damage = damage
+        self.skill_type = skill_type
+        self.facing_right = facing_right
+        self.facing_down = facing_down
+        self.setPixmap(self.frames[self.index])
+        self.resize(self.frames[0].size())
+        self.move(pos)
+        self.hitbox = QRect(pos, self.size())  # ヒットボックスの矩形
+        self.show()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.next_frame)
+        self.timer.start(self.interval)
+        self.show()
+
+        if skill_type == "throw":
+            self.dx = 20 if facing_right else -20 #毎フレーム向いてる方向に10PX移動する
+        elif skill_type == "put":
+            self.dx = 50 if facing_down else -50
+        else:
+            self.dx = 0
+
+    def next_frame(self):
+        if self.skill_type == "throw":
+            self.move(self.x() + self.dx, self.y())
+            self.hitbox.moveTo(self.x(), self.y())
+            self.check_hit()
+        if self.skill_type == "put":
+            self.move(self.x(), self.y()+ self.dx)
+            self.hitbox.moveTo(self.x(), self.y())
+            self.check_hit()
+        #throwじゃない場合は最初のフレームだけ当たり判定
+        if self.index == 0:
+            self.check_hit()
+        #次のフレームに移行する
+        self.index += 1
+        #アニメーションのフレームを超えたら終了
+        if self.index >= len(self.frames):
+            self.timer.stop()
+            self.deleteLater()
+        else:
+            self.setPixmap(self.frames[self.index])
+
+    def check_hit(self):
+        for m in self.parent.monsters:
+            if not m["alive"]:
+                continue
+            m_rect = QRect(m["x"], m["y"], m["pixmap"].width(), m["pixmap"].height())
+            if self.hitbox.intersects(m_rect):
+                m["hp"] -= self.damage
+                self.parent.hp_window.show_message(f"{m['display_name']} に {self.damage} ダメージ！")
+                self.parent.hp_window.show_message(f"{m['display_name']} のHP: {m['hp']}/{m['max_hp']}")
+                if m["hp"] <= 0 and m["alive"]:
+                    self.parent.handle_monster_death(m)

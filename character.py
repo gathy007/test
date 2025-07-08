@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDateTime
 from sound import play_bgm, stop_bgm, play_se
 import math
 
@@ -58,6 +58,36 @@ class Character:
     }
 
     def __init__(self, name="swordman"):
+        #スキル一覧
+        self.skills = {
+            "fireball": {
+                "name": "ファイアボール",
+                "damage": 10,
+                "cooldown": 3000,  #使用クールダウン ミリ秒
+                "last_used": 0,
+                "type": "throw",
+                "se": "fireball", #fireball.wav
+                "animation": {
+                    "folder": "assets/effects/fireball/",
+                    "frame_count": 4, #フレームの枚数
+                    "interval": 100, #アニメーションのフレーム数
+                }
+            },
+            "ice": {
+                "name": "アイス",
+                "damage": 20,
+                "cooldown": 3000,
+                "last_used": 0,
+                "type": "put",
+                "se": "ice",
+                "animation": {
+                    "folder": "assets/effects/ice/",
+                    "frame_count": 4,
+                    "interval": 500,
+                }
+            },
+        }
+
         self.name = name
         data = self.character_data.get(name)
         #それぞれのステータスの定義
@@ -98,9 +128,32 @@ class Character:
         self.exp = self.exp_base
         self.coins = self.coins_base
         self.exp_to_next = self.exp_to_next_base
+
+    #スキルの使用システム
+    def use_skill(self, skill_key, show_message=None):
+        skill = self.skills.get(skill_key)
+        if not skill:
+            if show_message:
+                show_message("そのスキルは存在しません")
+            return False
+
+        now = QDateTime.currentMSecsSinceEpoch()
+        if now - skill["last_used"] < skill["cooldown"]:
+            if show_message:
+                show_message(f"{skill['name']} はクールダウン中です")
+            return False
+
+        skill["last_used"] = now
+        if show_message:
+            show_message(f"{skill['name']} を使用！")
+        if "se" in skill:
+            play_se(skill["se"])
+        return True
+
     #攻撃力の計算式
     def calculate_attack_power(self):
         return math.floor(self.power * 1.5 + 0.5)
+    #HPの計算式
     def calculate_max_hp(self):
         return math.floor(self.max_hp_original * 2)
 
