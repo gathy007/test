@@ -342,10 +342,16 @@ class TransparentWindow(QWidget):
         interval = anim_info["interval"]
         damage = skill_info.get("damage", 0)
 
-        frames = [
-            QPixmap(f"{folder}{i}.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            for i in range(frame_count)
-        ]
+        if skill_type == "put":
+            frames = [
+                QPixmap(f"{folder}{i}.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                for i in range(frame_count)
+            ]
+        else:
+            frames = [
+                QPixmap(f"{folder}{i}.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                for i in range(frame_count)
+            ]
 
         SkillAnimation(
             parent=self,
@@ -657,13 +663,13 @@ class TransparentWindow(QWidget):
                     skill_pos = QPoint(self.x, self.y)
                 elif skill_type == "put":
                     if self.facing == "right":
-                        skill_pos = QPoint(self.x + 64, self.y)
+                        skill_pos = QPoint(self.x + 64, self.y - 32)
                     elif self.facing == "left":
-                        skill_pos = QPoint(self.x - 64, self.y)
+                        skill_pos = QPoint(self.x - 128, self.y - 32)
                     elif self.facing == "down":
-                        skill_pos = QPoint(self.x, self.y + 64)
+                        skill_pos = QPoint(self.x - 32, self.y + 64)
                     elif self.facing == "up":
-                       skill_pos = QPoint(self.x, self.y - 64)
+                       skill_pos = QPoint(self.x - 32, self.y - 128)
                 else:
                     skill_pos = QPoint(self.x, self.y) 
                 self.show_skill_animation(skill_info, position=skill_pos, skill_type=skill_type, facing=self.facing)
@@ -829,7 +835,7 @@ class SkillAnimation(QLabel):
                 self.dy = 20
             elif self.facing == "up":
                 self.dx = 0
-                self.dy = -20 #毎フレーム向いてる方向に10PX移動する
+                self.dy = -20
         elif skill_type == "put":
             self.dx = 0
         else:
@@ -840,7 +846,7 @@ class SkillAnimation(QLabel):
             self.move(self.x() + self.dx, self.y() + self.dy)  # 横・縦両方移動
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()
-        if self.skill_type == "put":
+        elif self.skill_type == "put":
             self.move(self.x(), self.y())
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()

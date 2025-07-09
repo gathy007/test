@@ -29,6 +29,9 @@ SE_BASE_VOLUMES = {
     "buy": 1.0,
     "use": 1.0,
     "nouse": 1.0,
+    "fireball": 1.0,
+    "ice": 1.0,
+    "slash": 1.0,
 }
 
 SE_SOUNDS = {}

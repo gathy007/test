@@ -66,7 +66,7 @@ class Character:
                 "cooldown": 3000,  #使用クールダウン ミリ秒
                 "last_used": 0,
                 "type": "throw",
-                "se": "fireball", #fireball.wav
+                "se": "fireball",
                 "animation": {
                     "folder": "assets/effects/fireball/",
                     "frame_count": 10, #フレームの枚数
@@ -82,7 +82,7 @@ class Character:
                 "se": "ice",
                 "animation": {
                     "folder": "assets/effects/ice/",
-                    "frame_count": 4,
+                    "frame_count": 3,
                     "interval": 500,
                 }
             },
