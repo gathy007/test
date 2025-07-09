@@ -147,8 +147,8 @@ class TransparentWindow(QWidget):
         self.attacking = False
         self.attack_animation_playing = False
 
+        self.facing = "right"
         self.facing_right = False
-        self.facing_down = False
 
         self.show() 
         #ウィンドウを強制的にアクティブにしてキーボードを受け付けるようにする
@@ -332,7 +332,7 @@ class TransparentWindow(QWidget):
         self.attack_animation_playing = True
         self.attack_timer.start(self.character.attack_speed)
     #スキルアニメーションの表示処理
-    def show_skill_animation(self, skill_info, position, skill_type="throw", facing_right=True, facing_down = True):
+    def show_skill_animation(self, skill_info, position, skill_type="throw", facing="down"):
         anim_info = skill_info.get("animation")
         if not anim_info:
             return 
@@ -343,7 +343,7 @@ class TransparentWindow(QWidget):
         damage = skill_info.get("damage", 0)
 
         frames = [
-            QPixmap(f"{folder}{i}.png").scaled(32, 632, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            QPixmap(f"{folder}{i}.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             for i in range(frame_count)
         ]
 
@@ -354,8 +354,7 @@ class TransparentWindow(QWidget):
             interval=interval,
             damage=damage,
             skill_type=skill_type,
-            facing_right=self.facing_right,
-            facing_down = self.facing_down,
+            facing=facing,
         )
 
     def apply_knockback(self, m):
@@ -506,20 +505,21 @@ class TransparentWindow(QWidget):
             if Qt.Key_Left in self.keys_pressed or Qt.Key_A in self.keys_pressed:
                 play_se("walk")
                 dx -= self.move_speed
+                self.facing = "left"
                 self.facing_right = False
             if Qt.Key_Right in self.keys_pressed or Qt.Key_D in self.keys_pressed:
                 play_se("walk")
                 dx += self.move_speed
+                self.facing = "right"
                 self.facing_right = True
-
             if Qt.Key_Up in self.keys_pressed or Qt.Key_W in self.keys_pressed:
                 play_se("walk")
                 dy -= self.move_speed
-                self.facing_down = False
+                self.facing = "up"
             if Qt.Key_Down in self.keys_pressed or Qt.Key_S in self.keys_pressed:
                 play_se("walk")
                 dy += self.move_speed
-                self.facing_down = True
+                self.facing = "down"
             new_x = min(max(self.x + dx, 0), self.width() - self.current_pixmap.width())
             new_y = min(max(self.y + dy, 0), self.height() - self.current_pixmap.height())
             
@@ -654,14 +654,19 @@ class TransparentWindow(QWidget):
                 skill_type = skill_info.get("type", "throw")
                 #スキルの位置を決定（キャラの左上が基準、＋が右と下）
                 if skill_type == "throw":
-                    offset_x = 64 if self.facing_right else -500 #右向いてたら64PXの位置にスキル出現(画像の左上を基準)
-                    skill_pos = QPoint(self.x + offset_x, self.y)
+                    skill_pos = QPoint(self.x, self.y)
                 elif skill_type == "put":
-                    offset_y = 64 if self.facing_down else -500 #下を向いてたら64pxの位置
-                    skill_pos = QPoint(self.x, self.y + offset_y)
+                    if self.facing == "right":
+                        skill_pos = QPoint(self.x + 64, self.y)
+                    elif self.facing == "left":
+                        skill_pos = QPoint(self.x - 64, self.y)
+                    elif self.facing == "down":
+                        skill_pos = QPoint(self.x, self.y + 64)
+                    elif self.facing == "up":
+                       skill_pos = QPoint(self.x, self.y - 64)
                 else:
                     skill_pos = QPoint(self.x, self.y) 
-                self.show_skill_animation(skill_info, position=skill_pos, skill_type=skill_type, facing_right=self.facing_right, facing_down = self.facing_down)
+                self.show_skill_animation(skill_info, position=skill_pos, skill_type=skill_type, facing=self.facing)
 
         #Sでステータス画面表示
         elif event.key() == Qt.Key_C:
@@ -767,7 +772,7 @@ class TransparentWindow(QWidget):
         self.dropped_coins.clear()
         self.attacking = False
         self.attack_animation_playing = False
-        self.facing_right = False
+        self.facing = "right"
         self.current_pixmap = self.character.static_pixmap
         print("状態リセット")
         self.update()
@@ -777,16 +782,31 @@ class TransparentWindow(QWidget):
             self.hp_window.show_message(text)
 #スキルアニメーションの攻撃処理
 class SkillAnimation(QLabel):
-    def __init__(self, parent, frames, pos, interval, damage, skill_type="throw", facing_right=True, facing_down = True):
+    def __init__(self, parent, frames, pos, interval, damage, skill_type="throw", facing="right"):
         super().__init__(parent)
         self.parent = parent
+        self.skill_type = skill_type
+        self.facing = facing
+
+        #アニメーションの画像反転
+        transform = QTransform()
+        if self.skill_type == "throw":
+            if self.facing == "right":
+                transform.scale(-1, 1)  # 左右反転
+            elif self.facing == "up":
+                transform.rotate(90)    # 時計回りに90度回転
+            elif self.facing == "down":
+                transform.rotate(-90)   # 反時計回りに90度回転
+            frames = [frame.transformed(transform) for frame in frames]
+        elif skill_type == "put":
+            if self.facing == "right":
+                transform.scale(-1, 1)  # 左右反転
+                frames = [frame.transformed(transform) for frame in frames]
+
         self.frames = frames
         self.index = 0
         self.interval = interval
         self.damage = damage
-        self.skill_type = skill_type
-        self.facing_right = facing_right
-        self.facing_down = facing_down
         self.setPixmap(self.frames[self.index])
         self.resize(self.frames[0].size())
         self.move(pos)
@@ -795,25 +815,36 @@ class SkillAnimation(QLabel):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.next_frame)
         self.timer.start(self.interval)
-        self.show()
 
+        #スキルタイプによる挙動
         if skill_type == "throw":
-            self.dx = 20 if facing_right else -20 #毎フレーム向いてる方向に10PX移動する
+            if self.facing == "right":
+                self.dx = 20
+                self.dy = 0
+            elif self.facing == "left":
+                self.dx = -20
+                self.dy = 0
+            elif self.facing == "down":
+                self.dx = 0
+                self.dy = 20
+            elif self.facing == "up":
+                self.dx = 0
+                self.dy = -20 #毎フレーム向いてる方向に10PX移動する
         elif skill_type == "put":
-            self.dx = 50 if facing_down else -50
+            self.dx = 0
         else:
             self.dx = 0
-
+    #スキルタイプによる挙動を再生
     def next_frame(self):
         if self.skill_type == "throw":
-            self.move(self.x() + self.dx, self.y())
+            self.move(self.x() + self.dx, self.y() + self.dy)  # 横・縦両方移動
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()
         if self.skill_type == "put":
-            self.move(self.x(), self.y()+ self.dx)
+            self.move(self.x(), self.y())
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()
-        #throwじゃない場合は最初のフレームだけ当たり判定
+        #typeがないと最初のフレームだけ当たり判定
         if self.index == 0:
             self.check_hit()
         #次のフレームに移行する
@@ -824,7 +855,7 @@ class SkillAnimation(QLabel):
             self.deleteLater()
         else:
             self.setPixmap(self.frames[self.index])
-
+    #魔法のダメージ処理
     def check_hit(self):
         for m in self.parent.monsters:
             if not m["alive"]:

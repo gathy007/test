@@ -69,8 +69,8 @@ class Character:
                 "se": "fireball", #fireball.wav
                 "animation": {
                     "folder": "assets/effects/fireball/",
-                    "frame_count": 4, #フレームの枚数
-                    "interval": 100, #アニメーションのフレーム数
+                    "frame_count": 10, #フレームの枚数
+                    "interval": 50, #アニメーションのフレーム数
                 }
             },
             "ice": {
