@@ -1,5 +1,6 @@
 import sys
 import random
+import math
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox, QLabel
 from PyQt5.QtGui import QPainter, QTransform,QPixmap
 from PyQt5.QtCore import Qt, QTimer, QRect, QPoint
@@ -17,7 +18,8 @@ from dungeons import DUNGEONS
 from shop_window import ShopWindow  
 from inventory_window import InventoryWindow 
 from items import ITEMS
-from monster_dex_window import MonsterDexWindow  
+from monster_dex_window import MonsterDexWindow 
+from skills_data import get_skill_by_key
 
 class TransparentWindow(QWidget):
     def __init__(self, selected_character="swordman", use_save_data=True, return_to_menu_callback=None):
@@ -43,11 +45,19 @@ class TransparentWindow(QWidget):
             save_data = load_game()
             if save_data:
                 self.character.level = save_data["level"]
+                self.character.learned_skill_keys = save_data.get("learned_skill_keys", [])
+                for skill_key in self.character.learned_skill_keys:
+                    skill_data = get_skill_by_key(skill_key) 
+                    if skill_data:
+                        self.character.skills[skill_key] = skill_data
                 self.character.exp = save_data["exp"]
                 self.character.exp_to_next = save_data["exp_to_next"]
                 self.character.hp = save_data["hp"]
                 self.character.max_hp = save_data["max_hp"]
                 self.character.max_hp_original = save_data["max_hp_original"]
+                self.character.mp = save_data["mp"]
+                self.character.max_mp = save_data["max_mp"]
+                self.character.max_mp_original = save_data["max_mp_original"]
                 self.character.coins = save_data["coins"]
                 self.character.power = save_data["power"]
                 self.character.defense = save_data["defense"]
@@ -116,6 +126,7 @@ class TransparentWindow(QWidget):
             unlocked_dungeons=self.unlocked_dungeons,
         )
         self.hp_window.update_hp(self.character.hp, self.character.max_hp)
+        self.hp_window.update_mp(self.character.mp, self.character.max_mp)
         self.hp_window.update_exp(self.character.level, self.character.exp, self.character.exp_to_next)
         self.hp_window.update_coin(self.character.coins)
         self.hp_window.update_status(self.character)
@@ -651,11 +662,11 @@ class TransparentWindow(QWidget):
             self.show_message("スキルをファイアボールに切り替えました")
         elif event.key() == Qt.Key_2:
             self.selected_skill_key = "ice"
-            self.show_message("スキルをアイスブラストに切り替えました")
+            self.show_message("スキルをアイスに切り替えました")
         #Fでスキル発動
         elif event.key() == Qt.Key_F:
             skill_key = self.selected_skill_key
-            if self.character.use_skill(skill_key, show_message=self.hp_window.show_message):
+            if self.character.use_skill(skill_key, show_message=self.hp_window.show_message, hp_window=self.hp_window):
                 skill_info = self.character.skills[skill_key]
                 skill_type = skill_info.get("type", "throw")
                 #スキルの位置を決定（キャラの左上が基準、＋が右と下）
@@ -868,8 +879,12 @@ class SkillAnimation(QLabel):
                 continue
             m_rect = QRect(m["x"], m["y"], m["pixmap"].width(), m["pixmap"].height())
             if self.hitbox.intersects(m_rect):
-                m["hp"] -= self.damage
-                self.parent.hp_window.show_message(f"{m['display_name']} に {self.damage} ダメージ！")
+                #ダメージ計算：スキル基本ダメージ × キャラクターの魔法力
+                base_damage = self.damage
+                magic_power = self.parent.character.magic
+                total_damage = math.floor(base_damage * magic_power + 0.5)
+                m["hp"] -= total_damage
+                self.parent.hp_window.show_message(f"{m['display_name']} に {total_damage} ダメージ！")
                 self.parent.hp_window.show_message(f"{m['display_name']} のHP: {m['hp']}/{m['max_hp']}")
                 if m["hp"] <= 0 and m["alive"]:
                     self.parent.handle_monster_death(m)

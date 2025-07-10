@@ -92,9 +92,11 @@ class InnWindow(QWidget):
         if hasattr(self.parent(), 'character'):
             character = self.parent().character
             character.hp = character.max_hp
+            character.mp = character.max_mp
             if hasattr(self.parent(), 'hp_window'):
                 self.parent().hp_window.update_hp(character.hp, character.max_hp)
-                self.parent().hp_window.show_message("HPが全回復した！")
+                self.parent().hp_window.update_mp(character.mp, character.max_mp)
+                self.parent().hp_window.show_message("HPとMPが全回復した！")
             if hasattr(self.parent(), 'monsters'):
                 self.parent().monsters.clear()
                     # セーブ処理追加

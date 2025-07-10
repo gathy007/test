@@ -27,6 +27,7 @@ class HPWindow(QMainWindow):
         self.title_label = QLabel("ステータス", self)
         self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
         self.hp_label = QLabel("現在のHP", self)
+        self.mp_label = QLabel("現在のMP", self)
         self.exp_label = QLabel("現在のレベルと経験値", self)
         self.coin_label = QLabel("現在のコイン", self)
         self.status_label = QLabel("ステータス", self)
@@ -37,6 +38,7 @@ class HPWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.addWidget(self.title_label)
         layout.addWidget(self.hp_label)
+        layout.addWidget(self.mp_label)
         layout.addWidget(self.exp_label)
         layout.addWidget(self.coin_label) 
         layout.addWidget(self.status_label)
@@ -122,6 +124,8 @@ class HPWindow(QMainWindow):
 
     def update_hp(self, current, maximum):
         self.hp_label.setText(f"HP：{current} / {maximum}")
+    def update_mp(self, current, maximum):
+        self.mp_label.setText(f"MP：{current} / {maximum}")
 
     def update_status(self, character):
         self.status_label.setText(

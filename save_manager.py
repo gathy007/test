@@ -9,11 +9,15 @@ def save_game(character, defeated_bosses=None, defeated_monsters=None, monster_k
     item_obj_to_key = {v: k for k, v in ITEMS.items()}
     data = {
         "level": character.level,
+        "learned_skill_keys": list(character.skills.keys()), 
         "exp": character.exp,
         "exp_to_next": character.exp_to_next,
         "hp": character.hp,
         "max_hp": character.max_hp,
         "max_hp_original": character.max_hp_original,
+        "mp": character.mp,
+        "max_mp": character.max_mp,
+        "max_mp_original": character.max_mp_original,
         "coins": character.coins,
         "power": character.power,
         "defense": character.defense,
