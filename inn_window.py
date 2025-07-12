@@ -99,15 +99,26 @@ class InnWindow(QWidget):
                 self.parent().hp_window.show_message("HPとMPが全回復した！")
             if hasattr(self.parent(), 'monsters'):
                 self.parent().monsters.clear()
-                    # セーブ処理追加
+            #セーブ処理追加
             defeated_bosses = getattr(self.parent(), 'defeated_bosses', [])
             defeated_monsters = getattr(self.parent(), 'defeated_monsters', set())
             monster_kill_count = getattr(self.parent(), 'monster_kill_count', {})
             unlocked_dungeons = getattr(self.parent(), 'unlocked_dungeons', set())
             inventory = getattr(character, 'inventory', [])
+            current_area_level = getattr(self.parent(), "current_area_level", 1)
+            world_map = getattr(self.parent(), 'world_map', None)
+            if world_map:
+                world_map_x = world_map.current_x
+                world_map_y = world_map.current_y
+            else:
+                world_map_x = 0
+                world_map_y = 0
 
             save_game(
                 character,
+                world_map_x,
+                world_map_y,
+                current_area_level,
                 defeated_bosses,
                 defeated_monsters,
                 monster_kill_count,

@@ -1,4 +1,11 @@
 DUNGEONS = {
+    "town": {
+        "display_name": "町",
+        "area_level": 1,
+        "description": "初心者向けのダンジョン",
+        "dungeon_key": "town",
+        "next_dungeon_key": "forest",
+    },
     "grassland": {
         "display_name": "草原",
         "area_level": 2,

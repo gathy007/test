@@ -103,11 +103,22 @@ class HPWindow(QMainWindow):
         play_se("save")  # セーブ音を鳴らす（適宜修正）
         if self.save_callback and self.character:
             parent = self.parent()
+            current_area_level = getattr(parent, "current_area_level", 1)
+            world_map = getattr(parent, "world_map", None)
+            if world_map:
+                world_map_x = world_map.current_x
+                world_map_y = world_map.current_y
+            else:
+                world_map_x = 0
+                world_map_y = 0
             parent_kill_count = getattr(parent, "monster_kill_count", self.monster_kill_count)
             parent_unlocked = getattr(self.parent(), "unlocked_dungeons", self.unlocked_dungeons)
             parent_inventory = getattr(parent, "inventory", self.inventory)
             self.save_callback(
                 self.character, 
+                world_map_x,
+                world_map_y,
+                current_area_level,
                 defeated_bosses=self.defeated_bosses, 
                 defeated_monsters=self.defeated_monsters,
                 monster_kill_count=parent_kill_count or {},

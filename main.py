@@ -32,7 +32,7 @@ class TransparentWindow(QWidget):
         self.return_to_menu_callback = return_to_menu_callback
 
         self.setFocusPolicy(Qt.StrongFocus)
-        self.world_map = WorldMap(width=3, height=3) #ワールドマップ生成（大きさを設定）
+        self.world_map = WorldMap(map_width=10, map_height=4) #ワールドマップ生成（大きさを設定）
 
         #キャラクターとモンスターの読み込み
         char_folder = "assets/character"
@@ -42,11 +42,15 @@ class TransparentWindow(QWidget):
         self.unlocked_dungeons = set()
         self.monster_kill_count = {}
         self.selected_skill_key = "fireball"
+        self.current_area_level = 1
         self.character = Character(selected_character)
         if use_save_data:
             save_data = load_game()
             if save_data:
                 self.character.level = save_data["level"]
+                self.world_map.current_x = save_data.get("world_map_x", 0)
+                self.world_map.current_y = save_data.get("world_map_y", 0)
+                self.current_area_level = save_data.get("current_area_level", 1) 
                 self.character.learned_skill_keys = save_data.get("learned_skill_keys", [])
                 for skill_key in self.character.learned_skill_keys:
                     skill_data = get_skill_by_key(skill_key) 
@@ -77,10 +81,17 @@ class TransparentWindow(QWidget):
                     if item_key in ITEMS:
                         self.character.inventory.append(ITEMS[item_key])
             else:
+                #なにかでsaveが読み込まれなかった用
                 self.defeated_monsters = set()
                 self.unlocked_dungeons = {"grassland"}
+                #ワールドマップの初期座標
+                self.world_map.current_x = 4
+                self.world_map.current_y = 3
         else:
             self.unlocked_dungeons = {"grassland"}
+            #ワールドマップの初期座標
+            self.world_map.current_x = 4
+            self.world_map.current_y = 3
         #INNの描写設定
         self.inn_pixmap = QPixmap("assets/shop/INN.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.inn_x = self.width() // 2 - self.inn_pixmap.width() // 2
@@ -528,14 +539,24 @@ class TransparentWindow(QWidget):
         if not self.character.character_alive:
             self.update()
             return
+
         #ワールドマップ移動処理
         moved, new_x, new_y = self.world_map.move_if_needed(self.x, self.y, self.width(), self.height())
         if moved:
             self.x = new_x
             self.y = new_y
-            new_area = self.world_map.get_current_area()
-            self.hp_window.show_message(f"エリアが {new_area} に変わった！")
-            self.monsters.clear()
+            # 現在のエリア名を取得
+            current_area = self.world_map.get_current_area()
+            self.hp_window.show_message(f"エリアが {current_area} に変わった！")
+            # 対応するダンジョン情報を取得
+            dungeon_info = DUNGEONS.get(current_area)
+            if dungeon_info:
+                self.current_area_level = dungeon_info["area_level"]
+                self.hp_window.show_message(f"{dungeon_info['display_name']}（Lv.{self.current_area_level}）に突入！")
+            else:
+                self.current_area_level = None
+                self.hp_window.show_message("未知のエリア。モンスターは出現しない。")
+            self.monsters.clear()  # 移動時に敵をリセット
 
         #攻撃アニメーション中は通常アニメーション処理をしない
         if self.attack_animation_playing:
@@ -766,6 +787,9 @@ class TransparentWindow(QWidget):
             play_se("save")
             save_game(
                 self.character, 
+                self.world_map.current_x,
+                self.world_map.current_y,
+                self.current_area_level,
                 self.defeated_bosses, 
                 self.defeated_monsters,
                 self.monster_kill_count,

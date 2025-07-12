@@ -4,11 +4,14 @@ from items import ITEMS
 
 SAVE_FILE = "config/save_data.json"
 #セーブデータの保存
-def save_game(character, defeated_bosses=None, defeated_monsters=None, monster_kill_count=None, unlocked_dungeons=None, inventory=None):
+def save_game(character, world_map_x, world_map_y, current_area_level, defeated_bosses=None, defeated_monsters=None, monster_kill_count=None, unlocked_dungeons=None, inventory=None):
     #保存するもの
     item_obj_to_key = {v: k for k, v in ITEMS.items()}
     data = {
         "level": character.level,
+        "world_map_x": world_map_x,
+        "world_map_y": world_map_y,
+        "current_area_level": current_area_level,
         "learned_skill_keys": list(character.skills.keys()), 
         "exp": character.exp,
         "exp_to_next": character.exp_to_next,
