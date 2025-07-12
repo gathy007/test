@@ -64,6 +64,11 @@ class HPWindow(QMainWindow):
         settings_action.triggered.connect(self.open_settings)
         toolbar.addAction(settings_action)
 
+        # ヘルプボタン
+        help_action = QAction(QIcon(), "ヘルプ", self)
+        help_action.triggered.connect(self.show_help)
+        toolbar.addAction(help_action)     
+
         # 設定ウィンドウのインスタンス（まだ開かない）
         self.settings_window = None       
 
@@ -145,3 +150,12 @@ class HPWindow(QMainWindow):
         #ウィンドウを閉じてもアプリ終了しないようにする
         self.hide()  #閉じるのではなく隠す
         event.ignore()  #閉じるイベントを無視する
+
+    def show_help(self):
+        try:
+            with open("README.txt", "r", encoding="utf-8") as file:
+                help_text = file.read()
+        except Exception as e:
+            help_text = f"ヘルプを読み込めませんでした: {e}"
+
+        QMessageBox.information(self, "ヘルプ", help_text)

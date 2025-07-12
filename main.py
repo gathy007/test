@@ -2,13 +2,13 @@ import sys
 import random
 import math
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox, QLabel
-from PyQt5.QtGui import QPainter, QTransform,QPixmap
+from PyQt5.QtGui import QPainter, QTransform, QPixmap, QColor, QFont, QPen
 from PyQt5.QtCore import Qt, QTimer, QRect, QPoint
 
 #他のpyからクラスをインポートする関数
-from character import Character  # キャラクター定義読み込み
-from monster import Monster      # モンスター定義読み込み
-from hp_window import HPWindow   #　ステータスウィンドウ定義読み込み
+from character import Character  #キャラクター定義読み込み
+from monster import Monster      #モンスター定義読み込み
+from hp_window import HPWindow   #ステータスウィンドウ定義読み込み
 from drop_item import get_drop_item_types  #ドロップアイテム定義読み込み
 from sound import play_bgm, stop_bgm, play_se #サウンド定義読み込み
 from settings_window import SettingsWindow
@@ -20,6 +20,7 @@ from inventory_window import InventoryWindow
 from items import ITEMS
 from monster_dex_window import MonsterDexWindow 
 from skills_data import get_skill_by_key
+from world_map import WorldMap
 
 class TransparentWindow(QWidget):
     def __init__(self, selected_character="swordman", use_save_data=True, return_to_menu_callback=None):
@@ -31,6 +32,7 @@ class TransparentWindow(QWidget):
         self.return_to_menu_callback = return_to_menu_callback
 
         self.setFocusPolicy(Qt.StrongFocus)
+        self.world_map = WorldMap(width=3, height=3)
 
         #キャラクターとモンスターの読み込み
         char_folder = "assets/character"
@@ -320,7 +322,15 @@ class TransparentWindow(QWidget):
             else:
                 painter.setBrush(Qt.green)
             painter.drawRect(self.x, self.y - 10, current_bar_width, bar_height)
-
+            mp_ratio = self.character.mp / self.character.max_mp if self.character.max_mp > 0 else 0
+            current_mp_width = int(bar_width * mp_ratio)
+            #MPバーの背景（灰色）
+            painter.setBrush(Qt.gray)
+            painter.drawRect(self.x, self.y - 4, bar_width, bar_height)
+            #MPバー（青色）
+            painter.setBrush(Qt.blue)
+            painter.drawRect(self.x, self.y - 4, current_mp_width, bar_height)
+            #キャラ描画
             painter.drawPixmap(self.x, self.y, self.current_pixmap)
             from PyQt5.QtGui import QPixmap
             for coin in self.dropped_coins:
@@ -358,7 +368,12 @@ class TransparentWindow(QWidget):
                 QPixmap(f"{folder}{i}.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 for i in range(frame_count)
             ]
-        else:
+        elif skill_type == "throw":
+            frames = [
+                QPixmap(f"{folder}{i}.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                for i in range(frame_count)
+            ]
+        elif skill_type == "slash":
             frames = [
                 QPixmap(f"{folder}{i}.png").scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 for i in range(frame_count)
@@ -514,6 +529,11 @@ class TransparentWindow(QWidget):
             self.update()
             return
         #攻撃アニメーション中は通常アニメーション処理をしない
+        if self.world_map.move_if_needed(self.x, self.y, self.width(), self.height()):
+            new_area = self.world_map.get_current_area()
+            self.hp_window.show_message(f"エリアが {new_area} に変わった！")
+            self.monsters.clear()
+
         if self.attack_animation_playing:
             self.update()
             return
@@ -553,14 +573,16 @@ class TransparentWindow(QWidget):
                 if m["alive"]:
                     m_rect = QRect(m["x"], m["y"], m["pixmap"].width(), m["pixmap"].height())
                     if player_rect.intersects(m_rect) and not self.attack_animation_playing:
-                     play_se("attack_c")
-                     m["hp"] -= self.character.attack_power #キャラからモンスターへのダメージ
-                     self.character.hp -= m["attack_power"]  #モンスターからキャラへのダメージ（個別攻撃力）
-                     self.hp_window.update_hp(self.character.hp, self.character.max_hp)
-                     self.hp_window.show_message(f"{m['display_name']} の攻撃！ {m['attack_power']} ダメージ！")
-                     self.hp_window.show_message(f"{m['display_name']} のHP: {m['hp']}/{m['max_hp']}")
-                     self.start_attack_animation()
-                     self.apply_knockback(m)  # ノックバック処理追加
+                        play_se("attack_c")
+                        m["hp"] -= self.character.attack_power #キャラからモンスターへのダメージ
+                        FloatingText(self, f"-{self.character.attack_power}", m["x"], m["y"] - 20, color=Qt.red, duration=1000)
+                        self.character.hp -= m["attack_power"]  #モンスターからキャラへのダメージ（個別攻撃力）
+                        self.hp_window.update_hp(self.character.hp, self.character.max_hp)
+                        self.hp_window.show_message(f"{m['display_name']} の攻撃！ {m['attack_power']} ダメージ！")
+                        self.hp_window.show_message(f"{m['display_name']} のHP: {m['hp']}/{m['max_hp']}")
+                        FloatingText(self, f"-{m['attack_power']}", self.x, self.y - 28, color=Qt.red, duration=1000)
+                        self.start_attack_animation()
+                        self.apply_knockback(m)  # ノックバック処理追加
                 if m["hp"] <= 0 and m["alive"]:
                     self.handle_monster_death(m)
                 if self.character.hp <= 0:
@@ -600,20 +622,26 @@ class TransparentWindow(QWidget):
         picked_up_exp = False
         player_rect = QRect(self.x, self.y, self.current_pixmap.width(), self.current_pixmap.height())
         new_coin_list = []
+        new_skills = [] 
         for item in self.dropped_coins:
             width, height = item.get("size", (32, 32))
             item_rect = QRect(item["x"], item["y"], width, height)
             if player_rect.intersects(item_rect):
-                if item["type"] == "coin":
+                if item["type"]     == "coin":
                     self.character.coins += item["amount"]
                     self.hp_window.update_coin(self.character.coins)
                     self.hp_window.show_message(f"{item['amount']}コインを拾った！")
                     picked_up_coin = True
                 elif item["type"] == "exp":
-                    self.character.add_exp(item["amount"], hp_window=self.hp_window)
+                    level_before = self.character.level
+                    new_skills = self.character.add_exp(item["amount"], hp_window=self.hp_window)
                     self.hp_window.update_exp(self.character.level, self.character.exp, self.character.exp_to_next)
                     self.hp_window.show_message(f"{item['amount']} 経験値を獲得！")
                     picked_up_exp = True
+                    if self.character.level > level_before:
+                        FloatingText(self, "LEVEL UP", self.x, self.y - 40, color=Qt.yellow, duration=1000) 
+                    for i, skill_name in enumerate(new_skills):
+                        FloatingText(self, f"スキル習得：{skill_name}", self.x, self.y - 60, color=Qt.cyan, duration=1500)
             else:
                 new_coin_list.append(item)
         if picked_up_coin == True:
@@ -656,13 +684,26 @@ class TransparentWindow(QWidget):
         #ctrl+Cでリセット
         #elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
             #self.reset_positions()  
-        #1と2でスキル選択（後でスキルボタン作成）
-        elif event.key() == Qt.Key_1:
-            self.selected_skill_key = "fireball"
-            self.show_message("スキルをファイアボールに切り替えました")
-        elif event.key() == Qt.Key_2:
-            self.selected_skill_key = "ice"
-            self.show_message("スキルをアイスに切り替えました")
+        #tabでスキル選択
+        elif event.key() == Qt.Key_Tab:
+            skill_keys = self.character.learned_skill_keys
+            if not skill_keys:
+                self.show_message("スキルをまだ覚えていません")
+                FloatingText(self, f"スキルをまだ覚えていません", self.x, self.y - 28, color=Qt.cyan, duration=500, rise=False)
+
+                return
+            # 現在のスキルが未設定 or 不正なら先頭に設定
+            if not hasattr(self, "selected_skill_key") or self.selected_skill_key not in skill_keys:
+                self.selected_skill_key = skill_keys[0]
+            else:
+                current_index = skill_keys.index(self.selected_skill_key)
+                next_index = (current_index + 1) % len(skill_keys)
+                self.selected_skill_key = skill_keys[next_index]   
+            skill_data = self.character.skills.get(self.selected_skill_key)
+            skill_name = skill_data["name"] if skill_data else self.selected_skill_key
+            self.show_message(f"スキルを「{skill_name}」に切り替えました")
+            FloatingText(self, f"{skill_name}", self.x, self.y - 28, color=Qt.cyan, duration=500, rise=False)
+
         #Fでスキル発動
         elif event.key() == Qt.Key_F:
             skill_key = self.selected_skill_key
@@ -681,6 +722,15 @@ class TransparentWindow(QWidget):
                         skill_pos = QPoint(self.x - 32, self.y + 64)
                     elif self.facing == "up":
                        skill_pos = QPoint(self.x - 32, self.y - 128)
+                elif skill_type == "slash":
+                    if self.facing == "right":
+                        skill_pos = QPoint(self.x + 64, self.y)
+                    elif self.facing == "left":
+                        skill_pos = QPoint(self.x - 64, self.y)
+                    elif self.facing == "down":
+                        skill_pos = QPoint(self.x, self.y + 64)
+                    elif self.facing == "up":
+                       skill_pos = QPoint(self.x, self.y  - 64)
                 else:
                     skill_pos = QPoint(self.x, self.y) 
                 self.show_skill_animation(skill_info, position=skill_pos, skill_type=skill_type, facing=self.facing)
@@ -819,6 +869,10 @@ class SkillAnimation(QLabel):
             if self.facing == "right":
                 transform.scale(-1, 1)  # 左右反転
                 frames = [frame.transformed(transform) for frame in frames]
+        elif self.skill_type == "slash":
+            if self.facing == "right":
+                transform.scale(-1, 1)  # 左右反転
+            frames = [frame.transformed(transform) for frame in frames]
 
         self.frames = frames
         self.index = 0
@@ -849,6 +903,8 @@ class SkillAnimation(QLabel):
                 self.dy = -20
         elif skill_type == "put":
             self.dx = 0
+        elif skill_type == "slash":
+            self.dx = 0
         else:
             self.dx = 0
     #スキルタイプによる挙動を再生
@@ -858,6 +914,10 @@ class SkillAnimation(QLabel):
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()
         elif self.skill_type == "put":
+            self.move(self.x(), self.y())
+            self.hitbox.moveTo(self.x(), self.y())
+            self.check_hit()
+        elif self.skill_type == "slash":
             self.move(self.x(), self.y())
             self.hitbox.moveTo(self.x(), self.y())
             self.check_hit()
@@ -882,9 +942,81 @@ class SkillAnimation(QLabel):
                 #ダメージ計算：スキル基本ダメージ × キャラクターの魔法力
                 base_damage = self.damage
                 magic_power = self.parent.character.magic
-                total_damage = math.floor(base_damage * magic_power + 0.5)
+                power = self.parent.character.calculate_attack_power()
+                skill_type = getattr(self, "skill_type", "other")
+                if skill_type == "slash":
+                    total_damage = math.floor(base_damage * power * 0.75 + 0.5)
+                elif skill_type == "other":
+                    total_damage = base_damage
+                else:
+                    total_damage = math.floor(base_damage * magic_power + 0.5)
+
                 m["hp"] -= total_damage
                 self.parent.hp_window.show_message(f"{m['display_name']} に {total_damage} ダメージ！")
                 self.parent.hp_window.show_message(f"{m['display_name']} のHP: {m['hp']}/{m['max_hp']}")
+                FloatingText(self.parent, f"-{total_damage}", m["x"], m["y"] - 20, color=Qt.red, duration=1000)
                 if m["hp"] <= 0 and m["alive"]:
                     self.parent.handle_monster_death(m)
+
+class FloatingText(QLabel):
+    def __init__(self, parent, text, x, y, color=Qt.white, duration=1000, rise=True, rise_speed=1):
+        super().__init__(parent)                           #↑表示時間     #↑1回あたりに上昇するピクセル数
+        self.text = text
+        self.color = QColor(color)
+        self.start_x = x
+        self.start_y = y
+        self.current_y = y
+        self.rise = rise
+        self.rise_speed = rise_speed 
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(12)
+        self.setFont(font)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.adjustSize()
+        extra_width = 200
+        extra_height = 10
+        self.resize(self.width() + extra_width, self.height() + extra_height)
+        self.move(self.start_x - 70, self.current_y - 3)
+
+        self.show()
+        self.raise_()
+        #上に移動していく処理
+        if self.rise:
+            self.animation_timer = QTimer(self)
+            self.animation_timer.timeout.connect(self.animate)
+            self.animation_timer.start(30)  # 30msごとに移動
+
+        #一定時間後に消えるタイマー
+        self.fade_timer = QTimer(self)
+        self.fade_timer.timeout.connect(self.fade_out)
+        self.fade_timer.start(duration)
+
+    def animate(self):
+        self.current_y -= self.rise_speed
+        self.move(self.start_x - 70, self.current_y - 3)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        font_metrics = painter.fontMetrics()
+        text_width = font_metrics.width(self.text)
+
+        x_offset = (self.width() - text_width) // 2
+        y_offset = font_metrics.ascent() + 2 
+
+        # 黒縁を描く（上下左右に文字をずらして描画）
+        pen = QPen(QColor(0, 0, 0))
+        pen.setWidth(2)
+        painter.setPen(pen)
+        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]:
+            painter.drawText(x_offset + dx, y_offset + dy, self.text)
+
+        # 本体の文字を描く
+        painter.setPen(self.color)
+        painter.drawText(x_offset, y_offset, self.text)
+
+    def fade_out(self):
+        if self.rise:
+            self.animation_timer.stop()
+        self.fade_timer.stop()
+        self.deleteLater()

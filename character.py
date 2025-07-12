@@ -12,7 +12,7 @@ class Character:
             "mp": 5,              #MP
             "power": 1,           #力 → 物理攻撃力に反映
             "defense": 1,         #守備力 → 被ダメージ軽減に反映予定
-            "magic": 1,           #魔法力 → 魔法攻撃に反映
+            "magic": 0.5,           #魔法力 → 魔法攻撃に反映
             "speed": 30,          #移動力 → 移動速度に反映 
             "attack_speed": 50,   #攻撃モーション1フレームごとの表示時間(ms)
             #静止時に画像
@@ -33,10 +33,11 @@ class Character:
             ],
             "level_up_bonus": {
                "bonus_hp": 1.15, #HP増加の倍率
-               "bonus_mp": 1.15,
+               "bonus_mp": 0.1,
+               "bonus_mp2": 1.5,
                "bonus_power": 1, #増加する力の量
                "bonus_defense": 0.5,
-               "bonus_magic": 0.2,
+               "bonus_magic": 0.1,
                "bonus_speed": 0,
            }
         },
@@ -64,6 +65,7 @@ class Character:
             "level_up_bonus": {
                "bonus_hp": 1.8,
                "bonus_mp": 1.1,
+               "bonus_mp2": 1,
                "bonus_power": 0.5,
                "bonus_defense": 2,
                "bonus_magic": 0.1,
@@ -80,6 +82,7 @@ class Character:
         self.name = name
         if self.name == "swordman":
             self.learnable_skills = [
+                {"key": "slash", "level": 3, "data": skills_data["slash"]},
                 {"key": "fireball", "level": 3, "data": skills_data["fireball"]},
                 {"key": "ice", "level": 6, "data": skills_data["ice"]},
             ]
@@ -87,8 +90,8 @@ class Character:
             self.learnable_skills = [
                 {"key": "ice", "level": 2, "data": skills_data["ice"]},
             ]
-        data = self.character_data.get(name)
         #それぞれのステータスの定義
+        data = self.character_data.get(name)
         self.power_base = data["power"]
         self.defense_base = data["defense"]
         self.magic_base = data["magic"]
@@ -138,17 +141,20 @@ class Character:
         if not skill:
             if show_message:
                 show_message("そのスキルは存在しません")
+                play_se("nouse")
             return False
 
         now = QDateTime.currentMSecsSinceEpoch()
         if now - skill["last_used"] < skill["cooldown"]:
             if show_message:
                 show_message(f"{skill['name']} はクールダウン中です")
+                play_se("nouse")
             return False
 
         if self.mp < skill.get("mp_cost", 0):
             if show_message:
                 show_message("MPが足りません")
+                play_se("nouse")
             return False
         self.mp -= skill.get("mp_cost", 0)
         if hp_window:
@@ -167,14 +173,15 @@ class Character:
         return math.floor(self.power * 1.75 + 0.5)
     #HPの計算式
     def calculate_max_hp(self):
-        return math.floor(self.max_hp_original * 2)
+        return math.floor(self.max_hp_original * 2 + 0.5)
     #MPの計算式
-    def calculate_max_mp(self):
-        return math.floor(self.max_mp_original * 1.5)
+    def calculate_max_mp(self,bonus):
+        return math.floor(self.max_mp_original * bonus.get("bonus_mp2", 1.1) + 0.5)
 
     #レベルアップシステム
     def add_exp(self, amount, hp_window=None):
         self.exp += amount
+        new_skills = []
         while self.exp >= self.exp_to_next:
             play_se("leverup1")
             self.exp -= self.exp_to_next
@@ -182,8 +189,8 @@ class Character:
             bonus = self.character_data[self.name].get("level_up_bonus", {})
             self.max_hp_original = math.floor(self.max_hp_original * bonus.get("bonus_hp", 1.1) + 0.5)
             self.max_hp = self.calculate_max_hp()
-            self.max_mp_original = math.floor(self.max_mp_original * bonus.get("bonus_mp", 1.1) + 0.5)
-            self.max_mp = self.calculate_max_mp()
+            self.max_mp_original = round(self.max_mp_original + bonus.get("bonus_mp", 1.1),1)
+            self.max_mp = self.calculate_max_mp(bonus)
             self.power = round(self.power + bonus.get("bonus_power", 0), 1)
             self.defense = round(self.defense + bonus.get("bonus_defense", 0), 1)
             self.magic = round(self.magic + bonus.get("bonus_magic", 0), 1)
@@ -192,8 +199,7 @@ class Character:
             self.hp = self.max_hp
             self.mp = self.max_mp
             self.exp_to_next = math.floor(self.exp_to_next * 1.25 + 0.5)  #必要EXP増加
-
-            new_skills = []
+            #スキルを覚える処理
             for skill in self.learnable_skills:
                 if skill["level"] <= self.level and skill["key"] not in self.skills:
                     self.skills[skill["key"]] = skill["data"]
@@ -205,8 +211,10 @@ class Character:
                 for skill_name in new_skills:
                     hp_window.show_message(f"スキル「{skill_name}」を習得！")
 
-        if hp_window:
-            hp_window.update_exp(self.level, self.exp, self.exp_to_next)
-            hp_window.update_status(self)
-            hp_window.update_hp(self.hp, self.max_hp)
-            hp_window.update_mp(self.mp, self.max_mp)
+            if hp_window:
+                hp_window.update_exp(self.level, self.exp, self.exp_to_next)
+                hp_window.update_status(self)
+                hp_window.update_hp(self.hp, self.max_hp)
+                hp_window.update_mp(self.mp, self.max_mp)
+
+        return new_skills

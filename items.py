@@ -31,8 +31,8 @@ ITEMS = {
         description="HPを10回復する",
         heal_amount=10,
         image_filename="small_potion.png",
-        price=1,
-        #price=50
+        #price=1,
+        price=50
     ),
     "small_high_potion": Item(
         no=2,
@@ -40,8 +40,8 @@ ITEMS = {
         description="HPを50回復する",
         heal_amount=50,
         image_filename="small_high_potion.png",
-        price=1,
-        #price=200
+        #price=1,
+        price=200
     ),
     "medium_potion": Item(
         no=3,
@@ -49,8 +49,8 @@ ITEMS = {
         description="HPを100回復する",
         heal_amount=100,
         image_filename="medium_potion.png",
-        price=1,
-        #price=300
+        #price=1,
+        price=300
     ),
     "medium_high_potion": Item(
         no=4,
@@ -58,8 +58,8 @@ ITEMS = {
         description="HPを500回復する",
         heal_amount=500,
         image_filename="medium_high_potion.png",
-        price=1,
-        #price=500
+        #price=1,
+        price=500
     ),
     "large_potion": Item(
         no=5,
@@ -67,8 +67,8 @@ ITEMS = {
         description="HPを1000回復する",
         heal_amount=1000,
         image_filename="large_potion.png",
-        price=1,
-        #price=700
+        #price=1,
+        price=700
     ),
     "large_high_potion": Item(
         no=6,
@@ -76,7 +76,7 @@ ITEMS = {
         description="HPを2500回復する",
         heal_amount=2500,
         image_filename="large_high_potion.png",
-        price=1,
-        #price=1000
+        #price=1,
+        price=1000
     ),
 }

@@ -15,7 +15,7 @@ skills_data = {
     },
     "ice": {
         "name": "アイス",
-        "damage": 20,
+        "damage": 7,
         "mp_cost": 5,
         "cooldown": 5000,
         "last_used": 0,
@@ -25,6 +25,20 @@ skills_data = {
             "folder": "assets/effects/ice/",
             "frame_count": 3,
             "interval": 500,
+        }
+    },
+        "slash": {
+        "name": "スラッシュ",
+        "damage": 1,
+        "mp_cost": 3,
+        "cooldown": 1000,
+        "last_used": 0,
+        "type": "slash",
+        "se": "slash",
+        "animation": {
+            "folder": "assets/effects/slash/",
+            "frame_count": 2,
+            "interval": 100,
         }
     },
 }

@@ -1,28 +1,41 @@
 {
-    "level": 2,
-    "learned_skill_keys": [],
-    "exp": 1,
-    "exp_to_next": 6,
-    "hp": 23,
-    "max_hp": 24,
-    "max_hp_original": 12,
+    "level": 10,
+    "learned_skill_keys": [
+        "slash",
+        "fireball",
+        "ice"
+    ],
+    "exp": 23,
+    "exp_to_next": 39,
+    "hp": 74,
+    "max_hp": 74,
+    "max_hp_original": 37,
     "mp": 9,
     "max_mp": 9,
-    "max_mp_original": 6,
-    "coins": 12,
-    "power": 2,
-    "defense": 1,
-    "magic": 1.1,
+    "max_mp_original": 5.9,
+    "coins": 177,
+    "power": 10,
+    "defense": 5.5,
+    "magic": 1.4,
     "speed": 30,
-    "attack_power": 4,
+    "attack_power": 18,
     "character_name": "swordman",
     "boss_level": 1,
-    "defeated_bosses": [],
+    "defeated_bosses": [
+        "BigSlime.png"
+    ],
     "defeated_monsters": [
+        "RedSlime.png",
+        "BigSlime.png",
+        "YellowSlime.png",
+        "BlueSlime.png",
         "Slime.png"
     ],
-    "monster_kill_count": {},
+    "monster_kill_count": {
+        "grassland": 25
+    },
     "unlocked_dungeons": [
+        "forest",
         "grassland"
     ],
     "inventory": []
