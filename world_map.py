@@ -22,19 +22,23 @@ class WorldMap:
     def move_if_needed(self, player_x, player_y, screen_width, screen_height):
         # 画面端に到達したかを判定し、エリアを変更する
         moved = False
-
-        if player_x <= 0:
+        new_player_x = player_x
+        new_player_y = player_y
+        if player_x <= 0 and self.current_x > 0:
             self.current_x -= 1
+            new_player_x = screen_width - self.tile_size
             moved = True
-        elif player_x + self.tile_size >= screen_width:
+        elif player_x + self.tile_size >= screen_width and self.current_x < self.width - 1:
             self.current_x += 1
+            new_player_x = 0
             moved = True
-
-        if player_y <= 0:
+        if player_y <= 0 and self.current_y > 0:
             self.current_y -= 1
+            new_player_y = screen_height - self.tile_size
             moved = True
-        elif player_y + self.tile_size >= screen_height:
+        elif player_y + self.tile_size >= screen_height and self.current_y < self.height - 1:
             self.current_y += 1
+            new_player_y = 0
             moved = True
 
-        return moved
+        return moved, new_player_x, new_player_y

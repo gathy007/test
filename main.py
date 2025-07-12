@@ -32,7 +32,7 @@ class TransparentWindow(QWidget):
         self.return_to_menu_callback = return_to_menu_callback
 
         self.setFocusPolicy(Qt.StrongFocus)
-        self.world_map = WorldMap(width=3, height=3)
+        self.world_map = WorldMap(width=3, height=3) #ワールドマップ生成（大きさを設定）
 
         #キャラクターとモンスターの読み込み
         char_folder = "assets/character"
@@ -528,12 +528,16 @@ class TransparentWindow(QWidget):
         if not self.character.character_alive:
             self.update()
             return
-        #攻撃アニメーション中は通常アニメーション処理をしない
-        if self.world_map.move_if_needed(self.x, self.y, self.width(), self.height()):
+        #ワールドマップ移動処理
+        moved, new_x, new_y = self.world_map.move_if_needed(self.x, self.y, self.width(), self.height())
+        if moved:
+            self.x = new_x
+            self.y = new_y
             new_area = self.world_map.get_current_area()
             self.hp_window.show_message(f"エリアが {new_area} に変わった！")
             self.monsters.clear()
 
+        #攻撃アニメーション中は通常アニメーション処理をしない
         if self.attack_animation_playing:
             self.update()
             return
