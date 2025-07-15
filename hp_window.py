@@ -95,6 +95,8 @@ class HPWindow(QMainWindow):
                 parent.shop_window.close()
             if hasattr(parent, "monster_dex_window"):
                 parent.monster_dex_window.close()
+            if hasattr(parent, "world_map_window"):
+                parent.world_map_window.close()
             parent.close()  # TransparentWindow を閉じる
             if self.return_to_menu_callback:
                 self.return_to_menu_callback()

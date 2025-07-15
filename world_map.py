@@ -10,10 +10,10 @@ class WorldMap:
 
         #エリアマップの定義（2Dで設定できる、エリアの広さはmain.pyのself.world_mapで設定）
         map_layout = [
-            ["town", "grassland", "grassland", "forest", "forest", "", "", "", "", ""],
-            ["graveyard",     "town",      "",         "",      "",      "", "", "", "", ""],
-            ["ruins",          "town",      "",         "",      "",      "", "", "", "", ""],
-            ["castle",          "",          "",         "",      "volcano",      "", "", "", "", "final_castle"],
+            [     "town",  "grassland",    "forest",   "grassland", "grassland", "grassland", "grassland", "grassland", "grassland", "grassland"],
+            ["grassland",  "grassland",    "forest",       "ruins",          "",          "",          "",          "",          "",          ""],
+            [   "forest",     "forest",    "forest",       "ruins",          "",          "",          "",          "",          "",          ""],
+            ["graveyard",  "graveyard",     "ruins",       "ruins",   "volcano",          "",          "",          "",          "",          ""],
         ]
 
         self.areas = {}
@@ -21,6 +21,13 @@ class WorldMap:
             for x, name in enumerate(row):
                 if name:
                     self.areas[(x, y)] = name
+        self.map_objects = {
+            (4, 3): "inn",
+            (2, 1): "dungeon1",
+            (4, 2): "dungeon2",
+        }
+    def get_map_object(self, x, y):
+        return self.map_objects.get((x, y), None)
 
     def get_current_area(self):
         return self.areas.get((self.current_x, self.current_y), "unknown")
@@ -31,6 +38,8 @@ class WorldMap:
         new_player_x = player_x
         new_player_y = player_y
         edge_margin = 1  
+        if hasattr(self, "world_map_window") and self.world_map_window.isVisible():
+            self.world_map_window.update()
 
         if player_x <= 0 and self.current_x > 0:
             self.current_x -= 1

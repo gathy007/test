@@ -23,13 +23,13 @@ class InnWindow(QWidget):
         self.label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.label)
 
-        for dungeon_name, dungeon_data in DUNGEONS.items():
-            dungeon_key = dungeon_data.get("dungeon_key", dungeon_name)
-            if dungeon_key in self.parent().unlocked_dungeons:
-                button = QPushButton(dungeon_data["display_name"])
-                button.clicked.connect(lambda _, key=dungeon_key: self.select_dungeon(key))
-                layout.addWidget(button)
-                self.buttons.append(button)
+        #for dungeon_name, dungeon_data in DUNGEONS.items():
+        #    dungeon_key = dungeon_data.get("dungeon_key", dungeon_name)
+        #    if dungeon_key in self.parent().unlocked_dungeons:
+        #        button = QPushButton(dungeon_data["display_name"])
+        #        button.clicked.connect(lambda _, key=dungeon_key: self.select_dungeon(key))
+        #        layout.addWidget(button)
+        #        self.buttons.append(button)
         
         self.shop_button = QPushButton("ショップに入る")
         self.shop_button.clicked.connect(self.open_shop)
@@ -136,11 +136,11 @@ class InnWindow(QWidget):
             self.on_return_home()
         self.close()
     #ダンジョンに入る処理
-    def select_dungeon(self, dungeon_key):
-        play_se("dungeon")
-        if self.on_dungeon_selected:
-            self.on_dungeon_selected(dungeon_key)
-        self.close()
+    #def select_dungeon(self, dungeon_key):
+    #    play_se("dungeon")
+    #    if self.on_dungeon_selected:
+    #        self.on_dungeon_selected(dungeon_key)
+    #    self.close()
     #ショップを開く処理
     def open_shop(self):
         play_se("window_open")

@@ -39,8 +39,8 @@ class Monster:
         "Alraune.png":     {"dex_number": 26, "hp": 60,   "exp": 132,  "coin":28,   "map_level": 7,   "attack_power": 121, "width": 64, "height": 64, "display_name": "アルウラネ", "area_level": 8},
         "Maneater.png":    {"dex_number": 27, "hp": 191,  "exp": 287,  "coin":81,   "map_level": 18,  "attack_power": 185, "width": 64, "height": 64, "display_name": "マンイーター", "area_level": 8},
         "Hellhound.png":   {"dex_number": 28, "hp": 387,  "exp": 703,  "coin":47,   "map_level": 22,  "attack_power": 87,  "width": 64, "height": 64, "display_name": "ヘルハウンド", "area_level": 8},
-        "Cyclops.png":     {"dex_number": 28, "hp": 387,  "exp": 703,  "coin":47,   "map_level": 22,  "attack_power": 87,  "width": 64, "height": 64, "display_name": "サイクロプス", "area_level": 8},
-        "Cockatrice.png":  {"dex_number": 28, "hp": 387,  "exp": 703,  "coin":47,   "map_level": 22,  "attack_power": 87,  "width": 64, "height": 64, "display_name": "コカトリス", "area_level": 8},
+        "Cyclops.png":     {"dex_number": 29, "hp": 387,  "exp": 703,  "coin":47,   "map_level": 22,  "attack_power": 87,  "width": 64, "height": 64, "display_name": "サイクロプス", "area_level": 8},
+        "Cockatrice.png":  {"dex_number": 30, "hp": 387,  "exp": 703,  "coin":47,   "map_level": 22,  "attack_power": 87,  "width": 64, "height": 64, "display_name": "コカトリス", "area_level": 8},
    
     }
 

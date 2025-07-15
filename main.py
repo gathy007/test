@@ -21,6 +21,7 @@ from items import ITEMS
 from monster_dex_window import MonsterDexWindow 
 from skills_data import get_skill_by_key
 from world_map import WorldMap
+from world_map_window import WorldMapWindow
 
 class TransparentWindow(QWidget):
     def __init__(self, selected_character="swordman", use_save_data=True, return_to_menu_callback=None):
@@ -94,8 +95,13 @@ class TransparentWindow(QWidget):
             self.world_map.current_y = 3
         #INNの描写設定
         self.inn_pixmap = QPixmap("assets/shop/INN.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.inn_x = self.width() // 2 - self.inn_pixmap.width() // 2
-        self.inn_y = self.height() // 2 - self.inn_pixmap.height() // 2
+        #ダンジョンを追加する場合
+        self.dungeon_pixmaps = {
+            "dungeon1": QPixmap("assets/dungeon/dungeon1.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon2": QPixmap("assets/dungeon/dungeon2.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation), 
+        }
+        self.facility_x = self.width() // 2 - self.inn_pixmap.width() // 2
+        self.facility_y = self.height() // 2 - self.inn_pixmap.height() // 2
         self.show_inn_dialog = False
         self.inn_window = InnWindow(on_dungeon_selected=self.enter_dungeon, on_return_home=self.return_to_home, parent=self)
 
@@ -203,12 +209,13 @@ class TransparentWindow(QWidget):
         boss_level = self.character.boss_level
         #出現可能モンスター一覧を取得
         #ダンジョン選択時はarea_level参照
+        #マップのエリアによって出現モンスターがかわる
         if hasattr(self, "current_area_level"):
             dungeon_name = getattr(self, "selected_dungeon", None)
             available_monsters = []
             for name, data in Monster.monster_data.items():
                 if data.get("area_level", 1) == self.current_area_level:
-                    # ボスモンスターは条件がそろうまで出さない
+                    #ボスモンスターは条件がそろうまで出さない
                     if data.get("type") == "boss":
                         kill_count = self.monster_kill_count.get(dungeon_name, 0)
                         if kill_count >= 10:
@@ -233,10 +240,10 @@ class TransparentWindow(QWidget):
                 if m["alive"] and m["name"] == filename:
                     return
 
-        # スポーン禁止範囲設定（INNとキャラクターの周辺）
+        #スポーン禁止範囲設定（INNとキャラクターの周辺）
         forbidden_areas = []
 
-        inn_rect = QRect(self.inn_x - 5, self.inn_y - 5,
+        inn_rect = QRect(self.facility_x - 5, self.facility_y - 5,
                          self.inn_pixmap.width() + 10, self.inn_pixmap.height() + 10)
         forbidden_areas.append(inn_rect)
 
@@ -293,7 +300,13 @@ class TransparentWindow(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.drawPixmap(self.inn_x, self.inn_y, self.inn_pixmap)
+        #INNやダンジョンなどの描写
+        current_obj = self.world_map.get_map_object(self.world_map.current_x, self.world_map.current_y)
+        if current_obj == "inn":
+            painter.drawPixmap(self.facility_x, self.facility_y, self.inn_pixmap)
+        elif current_obj in self.dungeon_pixmaps:
+            painter.drawPixmap(self.facility_x, self.facility_y, self.dungeon_pixmaps[current_obj])
+        
         for m in self.monsters:
             if m["alive"]:
                 painter.drawPixmap(m["x"], m["y"], m["pixmap"])
@@ -545,10 +558,12 @@ class TransparentWindow(QWidget):
         if moved:
             self.x = new_x
             self.y = new_y
-            # 現在のエリア名を取得
+            if hasattr(self, "world_map_window") and self.world_map_window.isVisible():
+                self.world_map_window.update() 
+            #現在のエリア名を取得
             current_area = self.world_map.get_current_area()
             self.hp_window.show_message(f"エリアが {current_area} に変わった！")
-            # 対応するダンジョン情報を取得
+            #対応するダンジョン情報を取得
             dungeon_info = DUNGEONS.get(current_area)
             if dungeon_info:
                 self.current_area_level = dungeon_info["area_level"]
@@ -692,7 +707,7 @@ class TransparentWindow(QWidget):
             if reply == QMessageBox.Yes:
                 stop_bgm()
                 if self.hp_window.isVisible():
-                    self.hp_window.close()      # もしくは self.hp_window.hide()
+                    self.hp_window.close()
                 if self.settings_window.isVisible():
                     self.settings_window.close()
                 if hasattr(self, "inn_window") and self.inn_window.isVisible():
@@ -701,6 +716,8 @@ class TransparentWindow(QWidget):
                     self.shop_window.close()
                 if hasattr(self, "monster_dex_window") and self.monster_dex_window and self.monster_dex_window.isVisible():
                     self.monster_dex_window.close()
+                if hasattr(self, "world_map_window") and self.world_map_window and self.world_map_window.isVisible():
+                    self.world_map_window.close()
                 self.close()
                 if self.return_to_menu_callback:
                     self.return_to_menu_callback() 
@@ -801,8 +818,8 @@ class TransparentWindow(QWidget):
         elif not self.character.character_alive:
             return
 
-        #Mでモンスター図鑑
-        elif event.key() == Qt.Key_M:
+        #Vでモンスター図鑑
+        elif event.key() == Qt.Key_V:
             if hasattr(self, "monster_dex_window") and self.monster_dex_window.isVisible():
                 play_se("window_close")
                 self.monster_dex_window.hide()
@@ -815,20 +832,37 @@ class TransparentWindow(QWidget):
 
         #spaceでINNに入る
         elif event.key() == Qt.Key_Space:
+            # INNウィンドウが開いていれば閉じる
             if hasattr(self, "inn_window") and self.inn_window is not None and self.inn_window.isVisible():
                 self.inn_window.close()
                 self.inn_window = None
-                return 
-            player_rect = QRect(self.x, self.y, self.current_pixmap.width(), self.current_pixmap.height())
-            inn_rect = QRect(self.inn_x, self.inn_y, self.inn_pixmap.width(), self.inn_pixmap.height())
-            if player_rect.intersects(inn_rect):
-                play_se("INN")
-                self.keys_pressed.clear() 
-                self.inn_window = InnWindow(on_dungeon_selected=self.enter_dungeon, on_return_home=self.return_to_home, parent=self)
-                self.inn_window.show()  
-                self.inn_window.activateWindow()
-                self.inn_window.setFocus()
+                return
 
+            current_obj = self.world_map.get_map_object(self.world_map.current_x, self.world_map.current_y)
+
+            if current_obj in ["inn"]:
+                player_rect = QRect(self.x, self.y, self.current_pixmap.width(), self.current_pixmap.height())
+                facility_rect = QRect(self.facility_x, self.facility_y, self.inn_pixmap.width(), self.inn_pixmap.height())
+                if player_rect.intersects(facility_rect):
+                    self.keys_pressed.clear()
+                    if current_obj == "inn":
+                        play_se("INN")
+                        self.inn_window = InnWindow(on_dungeon_selected=self.enter_dungeon, on_return_home=self.return_to_home, parent=self)
+                        self.inn_window.show()
+                        self.inn_window.activateWindow()
+                        self.inn_window.setFocus()
+        #Mでワールドマップを開く
+        elif event.key() == Qt.Key_M:
+            if hasattr(self, "world_map_window") and self.world_map_window.isVisible():
+                play_se("window_close")
+                self.world_map_window.hide()
+
+            else:
+                play_se("window_open")
+                self.world_map_window = WorldMapWindow(self.world_map, parent=self)
+                self.world_map_window.show()
+                self.activateWindow()           
+                self.setFocus()
         else:
             self.keys_pressed.add(event.key())
         
