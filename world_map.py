@@ -10,10 +10,28 @@ class WorldMap:
 
         #エリアマップの定義（2Dで設定できる、エリアの広さはmain.pyのself.world_mapで設定）
         map_layout = [
-            [     "town",  "grassland",    "forest",   "grassland", "grassland", "grassland", "grassland", "grassland", "grassland", "grassland"],
-            ["grassland",  "grassland",    "forest",       "ruins",          "",          "",          "",          "",          "",          ""],
-            [   "forest",     "forest",    "forest",       "ruins",          "",          "",          "",          "",          "",          ""],
-            ["graveyard",  "graveyard",     "ruins",       "ruins",   "volcano",          "",          "",          "",          "",          ""],
+            ["ruins","ruins","ruins","ruins","village","village","graveyard","graveyard","graveyard","graveyard","village","village","forest","forest","forest","forest","forest","ruins","ruins","ruins","ruins"],
+            ["ruins","ruins","ruins","ruins", "village", "graveyard", "graveyard", "graveyard",  "graveyard", "graveyard",  "village",  "village","forest","forest", "village", "village", "forest", "ruins", "ruins", "ruins", "ruins"],
+            ["ruins","ruins","ruins","ruins","graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","forest","forest", "village", "village", "village", "ruins", "ruins", "ruins", "ruins"],
+            ["ruins","ruins","ruins","ruins","graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","village","forest","forest", "village","village","village", "village", "village", "ruins", "forest"],
+            ["village","village","village","village","graveyard", "graveyard", "graveyard", "graveyard", "graveyard", "graveyard","village","village","forest","forest","village","village","village","village","forest","forest","forest"],
+            ["village","village","village","village","village","graveyard","graveyard","graveyard","village","village","village",  "forest","forest","forest", "village", "village", "village", "village", "village", "forest", "forest"],
+            ["village","forest","forest","village","village","village","village","village","village","forest","village","grassland","forest","forest","forest","forest", "village", "village", "village", "forest", "forest"],
+            ["village","forest","village","village","forest","forest","village","grassland","grassland","forest","grassland","grassland","forest","forest", "forest", "forest", "forest", "forest", "forest", "forest", "forest"],
+            ["forest","forest","forest","village", "village", "forest", "village", "forest", "grassland", "grassland","grassland","grassland","grassland","forest", "forest", "forest", "forest", "forest", "grassland", "forest", "grassland"],
+            ["forest","forest","forest","forest","forest","forest","forest","forest","grassland","grassland","grassland","grassland","grassland","grassland", "forest", "forest", "grassland", "forest", "grassland", "grassland", "grassland"],
+            ["forest","graveyard","graveyard","forest","forest","forest","grassland","grassland","grassland","grassland","grassland","grassland","grassland","grassland", "grassland", "grassland", "grassland", "grassland", "grassland", "grassland", "grassland"],
+            ["graveyard","forest","graveyard","forest","graveyard","graveyard","forest","grassland","grassland","grassland","grassland","grassland","grassland","grassland", "grassland", "grassland", "grassland", "village", "grassland", "village", "grassland"],
+            ["forest",  "forest","ruins","ruins", "ruins", "graveyard", "forest", "forest", "grassland", "grassland","grassland","grassland","grassland","forest", "forest", "forest", "village", "village", "grassland", "village", "grassland"],
+            ["forest","ruins","ruins","ruins","ruins","ruins","ruins","forest","forest","grassland","grassland","grassland","forest","village", "village", "village", "village", "village", "village", "village", "village"],
+            ["ruins","ruins","ruins","ruins","ruins","ruins","ruins","forest","forest","forest","grassland","forest","forest","forest", "castle", "castle", "castle", "village", "volcano", "volcano", "volcano"],
+            ["ruins","ruins","ruins","ruins","ruins","graveyard","forest","forest","castle","forest","forest","forest","forest","volcano", "castle","castle", "castle", "volcano", "volcano", "volcano", "volcano"],
+            ["graveyard","graveyard","graveyard","graveyard", "graveyard", "graveyard", "graveyard", "castle", "castle", "castle","graveyard","forest","village","volcano", "castle", "castle", "castle", "volcano", "volcano", "volcano", "volcano"],
+            ["graveyard","graveyard","graveyard","graveyard","graveyard","graveyard","castle","castle","castle","castle","castle","village","village","volcano", "volcano", "volcano", "volcano", "volcano", "volcano", "volcano", "volcano"],
+            ["graveyard","graveyard","graveyard","graveyard","graveyard","castle","castle","castle","castle","castle","castle","village","village","village","volcano", "volcano", "volcano", "volcano", "volcano", "volcano", "volcano"],
+            ["graveyard","graveyard","graveyard","graveyard","castle","castle","castle","castle","castle","castle","castle","graveyard","graveyard","village","volcano", "volcano", "volcano", "volcano", "volcano", "volcano", "volcano"],
+            ["graveyard","graveyard","graveyard","graveyard","graveyard","castle","castle","castle","castle","castle","castle","castle","castle","village", "village", "volcano", "volcano", "volcano", "volcano", "volcano", "volcano"],
+       
         ]
 
         self.areas = {}
@@ -22,9 +40,20 @@ class WorldMap:
                 if name:
                     self.areas[(x, y)] = name
         self.map_objects = {
-            (4, 3): "inn",
-            (2, 1): "dungeon1",
-            (4, 2): "dungeon2",
+            (10, 10): "inn0",
+            (19, 11): "inn1",
+            (17, 3): "inn2",
+            (1, 1): "inn3",
+            (0, 16): "inn4",
+            (7, 19): "inn5",
+            (19, 18): "inn6",
+            (13, 11): "dungeon0",
+            (13, 4): "dungeon1",
+            (16, 2): "dungeon2",
+            (6, 3): "dungeon3",
+            (0, 2): "dungeon4",
+            (10, 20): "dungeon5",
+            (20, 20): "dungeon6",
         }
     def get_map_object(self, x, y):
         return self.map_objects.get((x, y), None)

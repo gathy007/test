@@ -1,8 +1,8 @@
 {
     "level": 1,
-    "world_map_x": 1,
-    "world_map_y": 0,
-    "current_area_level": 2,
+    "world_map_x": 19,
+    "world_map_y": 11,
+    "current_area_level": 4,
     "learned_skill_keys": [],
     "exp": 0,
     "exp_to_next": 5,

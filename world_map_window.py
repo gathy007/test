@@ -12,9 +12,20 @@ class WorldMapWindow(QMainWindow):
         self.setWindowFlags(Qt.Tool | Qt.WindowStaysOnTopHint)
 
         self.object_icons = {
-            "inn": QPixmap("assets/shop/INN.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn0": QPixmap("assets/shop/INN0.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn1": QPixmap("assets/shop/INN1.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn2": QPixmap("assets/shop/INN2.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn3": QPixmap("assets/shop/INN3.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn4": QPixmap("assets/shop/INN4.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn5": QPixmap("assets/shop/INN5.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn6": QPixmap("assets/shop/INN6.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),            
+            "dungeon0": QPixmap("assets/dungeon/dungeon0.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
             "dungeon1": QPixmap("assets/dungeon/dungeon1.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
             "dungeon2": QPixmap("assets/dungeon/dungeon2.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon3": QPixmap("assets/dungeon/dungeon3.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon4": QPixmap("assets/dungeon/dungeon4.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon5": QPixmap("assets/dungeon/dungeon5.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon6": QPixmap("assets/dungeon/dungeon6.png").scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation),
         }
 
         central_widget = QWidget()
@@ -33,11 +44,13 @@ class WorldMapWindow(QMainWindow):
         painter.setFont(font)
 
         area_colors = {
-            "town": QColor(255, 223, 186),
+            "town": QColor(203, 133, 27),
             "grassland": QColor(144, 238, 144),
             "forest": QColor(34, 139, 34),
-            "ruins": QColor(169, 169, 169),
+            "village": QColor(224, 129, 104),
             "graveyard": QColor(105, 105, 105),
+            "ruins": QColor(169, 169, 169),
+            "castle": QColor(249, 204, 68),
             "volcano": QColor(255, 69, 0),
         }
 

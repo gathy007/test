@@ -33,7 +33,7 @@ class TransparentWindow(QWidget):
         self.return_to_menu_callback = return_to_menu_callback
 
         self.setFocusPolicy(Qt.StrongFocus)
-        self.world_map = WorldMap(map_width=10, map_height=4) #ワールドマップ生成（大きさを設定）
+        self.world_map = WorldMap(map_width=21, map_height=21) #ワールドマップ生成（大きさを設定）
 
         #キャラクターとモンスターの読み込み
         char_folder = "assets/character"
@@ -86,22 +86,36 @@ class TransparentWindow(QWidget):
                 self.defeated_monsters = set()
                 self.unlocked_dungeons = {"grassland"}
                 #ワールドマップの初期座標
-                self.world_map.current_x = 4
-                self.world_map.current_y = 3
+                self.world_map.current_x = 10
+                self.world_map.current_y = 10
         else:
             self.unlocked_dungeons = {"grassland"}
             #ワールドマップの初期座標
-            self.world_map.current_x = 4
-            self.world_map.current_y = 3
+            self.world_map.current_x = 10
+            self.world_map.current_y = 10
         #INNの描写設定
-        self.inn_pixmap = QPixmap("assets/shop/INN.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        #ダンジョンを追加する場合
+        self.inn_pixmaps = {
+            "inn0": QPixmap("assets/shop/INN0.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn1": QPixmap("assets/shop/INN1.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn2": QPixmap("assets/shop/INN2.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn3": QPixmap("assets/shop/INN3.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn4": QPixmap("assets/shop/INN4.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn5": QPixmap("assets/shop/INN5.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "inn6": QPixmap("assets/shop/INN6.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+        }        #ダンジョンを追加する場合
         self.dungeon_pixmaps = {
-            "dungeon1": QPixmap("assets/dungeon/dungeon1.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
-            "dungeon2": QPixmap("assets/dungeon/dungeon2.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation), 
+            "dungeon0": QPixmap("assets/dungeon/dungeon0.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon1": QPixmap("assets/dungeon/dungeon1.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation), 
+            "dungeon2": QPixmap("assets/dungeon/dungeon2.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon3": QPixmap("assets/dungeon/dungeon3.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation), 
+            "dungeon4": QPixmap("assets/dungeon/dungeon4.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
+            "dungeon5": QPixmap("assets/dungeon/dungeon5.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation), 
+            "dungeon6": QPixmap("assets/dungeon/dungeon6.png").scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation),
         }
-        self.facility_x = self.width() // 2 - self.inn_pixmap.width() // 2
-        self.facility_y = self.height() // 2 - self.inn_pixmap.height() // 2
+        self.current_inn_name = "inn0"
+        inn_pixmap = self.inn_pixmaps[self.current_inn_name]
+        self.facility_x = self.width() // 2 - inn_pixmap.width() // 2
+        self.facility_y = self.height() // 2 - inn_pixmap.height() // 2
         self.show_inn_dialog = False
         self.inn_window = InnWindow(on_dungeon_selected=self.enter_dungeon, on_return_home=self.return_to_home, parent=self)
 
@@ -243,9 +257,17 @@ class TransparentWindow(QWidget):
         #スポーン禁止範囲設定（INNとキャラクターの周辺）
         forbidden_areas = []
 
-        inn_rect = QRect(self.facility_x - 5, self.facility_y - 5,
-                         self.inn_pixmap.width() + 10, self.inn_pixmap.height() + 10)
-        forbidden_areas.append(inn_rect)
+        current_obj = self.world_map.get_map_object(self.world_map.current_x, self.world_map.current_y)
+        if current_obj and current_obj.startswith("inn"):
+            inn_pixmap = self.inn_pixmaps.get(current_obj)
+            if inn_pixmap:
+                inn_rect = QRect(
+                    self.facility_x - 5,
+                    self.facility_y - 5,
+                    inn_pixmap.width() + 10,
+                    inn_pixmap.height() + 10
+                )
+                forbidden_areas.append(inn_rect)
 
         char_pixmap = self.current_pixmap
         char_rect = QRect(self.x - 5, self.y - 5,
@@ -302,8 +324,10 @@ class TransparentWindow(QWidget):
         painter = QPainter(self)
         #INNやダンジョンなどの描写
         current_obj = self.world_map.get_map_object(self.world_map.current_x, self.world_map.current_y)
-        if current_obj == "inn":
-            painter.drawPixmap(self.facility_x, self.facility_y, self.inn_pixmap)
+        if current_obj and current_obj.startswith("inn"):
+            inn_pixmap = self.inn_pixmaps.get(current_obj)
+            if inn_pixmap:
+                painter.drawPixmap(self.facility_x, self.facility_y, inn_pixmap)
         elif current_obj in self.dungeon_pixmaps:
             painter.drawPixmap(self.facility_x, self.facility_y, self.dungeon_pixmaps[current_obj])
         
@@ -832,7 +856,6 @@ class TransparentWindow(QWidget):
 
         #spaceでINNに入る
         elif event.key() == Qt.Key_Space:
-            # INNウィンドウが開いていれば閉じる
             if hasattr(self, "inn_window") and self.inn_window is not None and self.inn_window.isVisible():
                 self.inn_window.close()
                 self.inn_window = None
@@ -840,17 +863,24 @@ class TransparentWindow(QWidget):
 
             current_obj = self.world_map.get_map_object(self.world_map.current_x, self.world_map.current_y)
 
-            if current_obj in ["inn"]:
+            if current_obj and current_obj.startswith("inn"):
+                inn_pixmap = self.inn_pixmaps.get(current_obj)
+                if not inn_pixmap:
+                    return
+
                 player_rect = QRect(self.x, self.y, self.current_pixmap.width(), self.current_pixmap.height())
-                facility_rect = QRect(self.facility_x, self.facility_y, self.inn_pixmap.width(), self.inn_pixmap.height())
+                facility_rect = QRect(self.facility_x, self.facility_y, inn_pixmap.width(), inn_pixmap.height())
                 if player_rect.intersects(facility_rect):
                     self.keys_pressed.clear()
-                    if current_obj == "inn":
-                        play_se("INN")
-                        self.inn_window = InnWindow(on_dungeon_selected=self.enter_dungeon, on_return_home=self.return_to_home, parent=self)
-                        self.inn_window.show()
-                        self.inn_window.activateWindow()
-                        self.inn_window.setFocus()
+                    play_se("INN")
+                    self.inn_window = InnWindow(
+                        on_dungeon_selected=self.enter_dungeon,
+                        on_return_home=self.return_to_home,
+                        parent=self
+                    )
+                    self.inn_window.show()
+                    self.inn_window.activateWindow()
+                    self.inn_window.setFocus()
         #Mでワールドマップを開く
         elif event.key() == Qt.Key_M:
             if hasattr(self, "world_map_window") and self.world_map_window.isVisible():
